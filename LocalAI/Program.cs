@@ -1,10 +1,15 @@
 ﻿using Microsoft.Extensions.AI;
 using OllamaSharp;
+using OllamaSharp.Models.Chat;
 using System;
+using System.ComponentModel;
 
 // start the ollama local server with the following command: ollama serve 
 // Then run this program to interact with the model
-IChatClient chatClient = new OllamaApiClient(new Uri("http://localhost:11434/"), "phi3:mini");
+// var ollamaEndpoint = new Uri("http://localhost:11434/");
+var ollamaEndpoint = new Uri("http://127.0.0.1:11434/");
+var chatModelname = "phi3:mini";
+IChatClient chatClient = new OllamaApiClient(ollamaEndpoint, chatModelname);
 
 // Start the conversation with context for the AI model
 List<ChatMessage> chatHistory = new ();
@@ -39,25 +44,37 @@ List<ChatMessage> chatHistory = new ();
 // Output: Sentiment: Positive
 
 // Analyzing Multiple Items
-string[] reviews = [
-    "Best purchase ever!",
-    "Returned it immediately.",
-    "Hello",
-    "It works as advertised.",
-    "The packaging was damaged but otherwise okay."
-];
+// string[] reviews = [
+//     "Best purchase ever!",
+//     "Returned it immediately.",
+//     "Hello",
+//     "It works as advertised.",
+//     "The packaging was damaged but otherwise okay."
+// ];
 
-foreach (var view in reviews)
-{
-    var res = await chatClient.GetResponseAsync<Sentiment>(
-        $"What's the sentiment of this review? {view}");
-        Console.WriteLine($"Review: {view} | Sentiment: {res.Result}");
-}
-public enum Sentiment
-{
-    Positive,
-    Negative,
-    Neutral
-}
+// foreach (var view in reviews)
+// {
+//     var res = await chatClient.GetResponseAsync<Sentiment>(
+//         $"What's the sentiment of this review? {view}");
+//         Console.WriteLine($"Review: {view} | Sentiment: {res.Result}");
+// }
+// public enum Sentiment
+// {
+//     Positive,
+//     Negative,
+//     Neutral
+// }
 
+#endregion
+#region Function Calling Example
+
+chatClient = chatClient.AsBuilder().UseFunctionInvocation().Build();
+
+var chatOptions = new ChatOptions
+{
+    Tools = [AIFunctionFactory.Create(FunctionCalling.GetWeather)]
+};
+
+var response = await chatClient.GetResponseAsync("Shoult I bring an umbrella to New York City today?", chatOptions);
+Console.WriteLine(response.Text);
 #endregion
