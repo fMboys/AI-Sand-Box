@@ -8,7 +8,7 @@ using System.ComponentModel;
 // Then run this program to interact with the model
 // var ollamaEndpoint = new Uri("http://localhost:11434/");
 var ollamaEndpoint = new Uri("http://127.0.0.1:11434/");
-var chatModelname = "phi3:mini";
+var chatModelname = "llama3.2";
 IChatClient chatClient = new OllamaApiClient(ollamaEndpoint, chatModelname);
 
 // Start the conversation with context for the AI model
@@ -70,11 +70,32 @@ List<ChatMessage> chatHistory = new ();
 
 chatClient = chatClient.AsBuilder().UseFunctionInvocation().Build();
 
+// var chatOptions = new ChatOptions
+// {
+//     Tools = [AIFunctionFactory.Create(FunctionCalling.GetWeather)]
+// };
+
+//Calling multiple functions
 var chatOptions = new ChatOptions
 {
-    Tools = [AIFunctionFactory.Create(FunctionCalling.GetWeather)]
+    Tools = [
+        AIFunctionFactory.Create(FunctionCalling.GetWeather),
+        AIFunctionFactory.Create(FunctionCalling.ConvertTemperature),
+        AIFunctionFactory.Create(FunctionCalling.GetStockPrice),
+    ]
 };
 
 var response = await chatClient.GetResponseAsync("Shoult I bring an umbrella to New York City today?", chatOptions);
 Console.WriteLine(response.Text);
+
+// Calls GetStockPrice
+await chatClient.GetResponseAsync("How is Microsoft stock doing?", chatOptions);
+
+// Calls SearchRestaurants
+await chatClient.GetResponseAsync("Find Italian restaurants near downtown Seattle", chatOptions);
+
+// Might call multiple functions
+await chatClient.GetResponseAsync(
+    "I'm visiting Paris tomorrow. What's the weather like, and can you suggest some good cafes?", 
+    chatOptions);
 #endregion
