@@ -1,4 +1,5 @@
 ﻿using System.ClientModel;
+using CommunityToolkit.VectorData.InMemory;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
 using OpenAI;
@@ -63,6 +64,47 @@ Console.WriteLine($"Query: '{query}\n'");
 foreach ( var result in results)
 {
     Console.WriteLine($"{result.Similarity:F3} - {result.Product}");
+}
+
+// Create the vector store and collection
+var vectorStore = new InMemoryVectorStore();
+var productCollection = vectorStore.GetCollection<int, Product>("products");
+await productCollection.EnsureCollectionExistsAsync();
+
+// Your product data
+var productData = new[]
+{
+    new { Id = 1, Name = "Trail Runner Pro", Description = "Lightweight running shoes for trail running" },
+    new { Id = 2, Name = "Urban Jogger", Description = "Comfortable sneakers for city jogging" },
+    new { Id = 3, Name = "Executive Oxford", Description = "Classic leather dress shoes for business" },
+    // ... more products
+};
+
+// Generate embeddings and store
+foreach(var p in productData)
+{
+   var embedd = await generator.GenerateVectorAsync(p.Description);
+    await productCollection.UpsertAsync(new Product
+    {
+        Id = p.Id,
+        Name = p.Name,
+        Description = p.Description,
+        Embedding = embedd
+    });
+}
+
+// Search for similar products
+var searchQuery = "shoes for my morning jog";
+var queryEmbeddings = await generator.GenerateVectorAsync(searchQuery);
+
+var searchResult = productCollection.SearchAsync(queryEmbeddings, 3);
+
+Console.WriteLine($"Results for: '{searchQuery}'\n");
+await foreach(var result in searchResult)
+{
+    Console.WriteLine($"Score: {result.Score:F3}");
+    Console.WriteLine($"Product: {result.Record.Name}");
+    Console.WriteLine($"Description: {result.Record.Description}\n");
 }
 
 
