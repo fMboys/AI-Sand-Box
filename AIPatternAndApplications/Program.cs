@@ -1,0 +1,85 @@
+﻿using System.ClientModel;
+using Microsoft.Extensions.AI;
+using OllamaSharp;
+using OpenAI;
+
+
+// var groqEndpoint = "https://api.groq.com/openai/v1";
+
+var ollamaEndpoint = new Uri("http://127.0.0.1:11434/v1/");
+var chatModelName = "nomic-embed-text:latest";
+string ok = "Ollama";
+
+// Generate embeddings directly with the Ollama client
+IEmbeddingGenerator<string, Embedding<float>> generator = new OpenAIClient(new ApiKeyCredential(ok),
+    new OpenAIClientOptions
+    {
+        Endpoint = ollamaEndpoint
+    }).GetEmbeddingClient(chatModelName).AsIEmbeddingGenerator();
+    
+// Generate an embedding for text
+var embedding = await generator.GenerateAsync("I love pizza");
+
+// The result is a vector of floats
+Console.WriteLine($"Embedding dimensions: {embedding.Vector.Length}");
+
+// Embeding multiple items
+string[] documents = [
+    "The quick brown fox jumps over the lazy dog",
+    "A fast auburn fox leaps above a sleepy canine",
+    "The weather is nice today",
+    "I enjoy programming in C#"
+];
+
+var embeddings = await generator.GenerateAsync(documents);
+
+foreach(var (doc, emb) in documents.Zip(embeddings))
+{
+    Console.WriteLine($"'{doc.Substring(0,20)}...' {emb.Vector.Length} dimensions");
+}
+
+// Finding similar sentences using cosine similarity
+var query = "athletic footwear for running";
+var queryEmbedding = await generator.GenerateVectorAsync(query);
+
+string[] products = [
+    "Running shoes for marathon training",
+    "Comfortable sneakers for jogging",
+    "Leather dress shoes for formal occasions",
+    "Hiking boots for mountain trails",
+    "Basketball shoes for indoor courts"
+];
+
+var productEmbeddings = await generator.GenerateAsync(products);
+
+// Calculate cosine similarity between the query and each product
+var results = products.Zip(productEmbeddings).Select(p => new
+{
+    Product = p.First,
+    Similarity = CosineSimilarity(queryEmbedding, p.Second.Vector)
+}).OrderByDescending(r => r.Similarity).ToList();
+
+Console.WriteLine($"Query: '{query}\n'");
+foreach ( var result in results)
+{
+    Console.WriteLine($"{result.Similarity:F3} - {result.Product}");
+}
+
+
+
+float CosineSimilarity(ReadOnlyMemory<float> a, ReadOnlyMemory<float> b)
+{
+    var spanA = a.Span;
+    var spanB = b.Span;
+
+    float dotProduct = 0, normA = 0, normB = 0;
+
+    for (int i= 0; i < spanA.Length; i++)
+    {
+        dotProduct += spanA[i] * spanB[i];
+        normA += spanA[i] * spanA[i];
+        normB += spanB[i] * spanB[i];
+    }
+
+    return dotProduct / (MathF.Sqrt(normA) * MathF.Sqrt(normB));
+}

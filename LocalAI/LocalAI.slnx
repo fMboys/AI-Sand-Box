@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="../AIMiddleware/AIMiddleware.csproj" />
+  <Project Path="LocalAI.csproj" />
+</Solution>
